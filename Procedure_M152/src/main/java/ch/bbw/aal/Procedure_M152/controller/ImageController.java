@@ -17,6 +17,7 @@ import java.awt.*;
 import java.awt.image.ImageObserver;
 import java.awt.image.ImageProducer;
 import java.io.*;
+import java.nio.file.Files;
 import java.util.ArrayList;
 import java.util.LinkedList;
 import java.util.List;
@@ -30,23 +31,41 @@ public class ImageController {
     ImageRepository imageRepository;
 
     @PostMapping("/upload")
-    public Image uplaodImage(@RequestParam("myFile") MultipartFile file) throws IOException {
+    public Image uplaodImage(@RequestParam("myFile") List<MultipartFile> files) throws IOException {
 
-        File inputFile = new File("InputFile");
+        for (MultipartFile multipartFile : files) {
 
-        try (FileOutputStream outputStream = new FileOutputStream(inputFile)) {
-            outputStream.write(file.getBytes());
-        }
+            if (multipartFile.getBytes().length > 0) {
+                Image image = new Image();
 
-        FileConverter fc = new FileConverter();
-        File pngFile = fc.jpgToPng(inputFile);
+                String name = multipartFile.getName();
+                ;
+                image.setType(multipartFile.getContentType());
+                image.setPic(multipartFile.getBytes());
 
-        Image img = new Image(file.getOriginalFilename(),file.getContentType(),file.getBytes());
+                File inputFile = new File("InputFile");
 
-        final Image savedImage = imageRepository.save(img);
+                try (FileOutputStream outputStream = new FileOutputStream(inputFile)) {
+                    outputStream.write(multipartFile.getBytes());
+                }
 
-        System.out.println("Image saved");
-        return savedImage;
+                FileConverter fc = new FileConverter();
+                //Change Filetype to PNG
+                File pngFile = fc.jpgToPng(inputFile);
+                //Add Watermark to File
+                File waterMarkedFile = fc.addWatermark(pngFile, "@Aaron Laeuchli");
+                //Change Resolution for File
+                File smallerFile = fc.setWidthTo(500, waterMarkedFile);
+
+                image.setPic(Files.readAllBytes(smallerFile.toPath()));
+                image.setName(name);
+
+                Image savedImage = imageRepository.save(image);
+
+                System.out.println("Image saved");
+                return savedImage;
+            }}
+        return null;
     }
 
     @GetMapping("/ImagesInfos")
