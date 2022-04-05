@@ -31,22 +31,23 @@ public class ImageController {
     ImageRepository imageRepository;
 
     @PostMapping("/upload")
-    public Image uplaodImage(@RequestParam("myFile") List<MultipartFile> files) throws IOException {
+    public Image uplaodImage(@RequestParam("myFile") MultipartFile files) throws IOException {
 
-        for (MultipartFile multipartFile : files) {
+        System.out.println(files.getName());
 
-            if (multipartFile.getBytes().length > 0) {
+
+            if (files.getBytes().length > 0) {
                 Image image = new Image();
 
-                String name = multipartFile.getName();
-                ;
-                image.setType(multipartFile.getContentType());
-                image.setPic(multipartFile.getBytes());
+                image.setName(files.getName());
+
+                image.setType(files.getContentType());
+                image.setPic(files.getBytes());
 
                 File inputFile = new File("InputFile");
 
                 try (FileOutputStream outputStream = new FileOutputStream(inputFile)) {
-                    outputStream.write(multipartFile.getBytes());
+                    outputStream.write(files.getBytes());
                 }
 
                 FileConverter fc = new FileConverter();
@@ -57,14 +58,15 @@ public class ImageController {
                 //Change Resolution for File
                 File smallerFile = fc.setWidthTo(500, waterMarkedFile);
 
-                image.setPic(Files.readAllBytes(smallerFile.toPath()));
-                image.setName(name);
+                image.setPic(Files.readAllBytes(pngFile.toPath()));
+                image.setPicSmall(Files.readAllBytes(smallerFile.toPath()));
+                image.setPicWatermarked(Files.readAllBytes(waterMarkedFile.toPath()));
 
                 Image savedImage = imageRepository.save(image);
 
                 System.out.println("Image saved");
                 return savedImage;
-            }}
+            }
         return null;
     }
 
@@ -85,11 +87,11 @@ public class ImageController {
         }
     }
 
-    @GetMapping(value = "/getImages/{ImageId}", produces = MediaType.IMAGE_JPEG_VALUE)
+    @GetMapping(value = "/getImages/{ImageId}", produces = MediaType.IMAGE_PNG_VALUE)
     public @ResponseBody byte[] getImageById(@PathVariable("ImageId") long id) throws IOException {
         Optional<Image> imageData = imageRepository.findById(id);
         if (imageData.isPresent()) {
-            InputStream inputStream = new ByteArrayInputStream(imageData.get().getPic());
+            InputStream inputStream = new ByteArrayInputStream(imageData.get().getPicWatermarked());
 
             return IOUtils.toByteArray(inputStream);
         } else {
